@@ -1,5 +1,6 @@
+import json
+import hashlib
 def prepare_store_date(obj_dict,keys=[]):
- 
     data = {}
     for key in keys:
         try:
@@ -10,4 +11,10 @@ def prepare_store_date(obj_dict,keys=[]):
     return data
 
 
+def get_hash(obj):
+    """
+    Generate a hash for a JSON object.
+    """
+    obj_str = json.dumps(obj, sort_keys=True)
+    return hashlib.sha256(obj_str.encode()).hexdigest()
 

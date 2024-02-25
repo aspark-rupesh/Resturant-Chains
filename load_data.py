@@ -1,6 +1,6 @@
 import pandas as pd
-from utils import  prepare_store_date
-from db_connection import db
+from utils import  get_hash, prepare_store_date
+from db_connection import db, reset_database
 import pathlib
 
 BASE_DIR = pathlib.Path(__name__).parent.resolve()
@@ -8,10 +8,13 @@ BASE_DIR = pathlib.Path(__name__).parent.resolve()
 
 file_names = ["one.json","two.json","three.json"]
 
-unique_options = []
-unique_customizations = []
+unique_options = {}
+unique_customizations = {}
 duplixate_option_count = 0
 option_id = 1
+
+# drop the database
+reset_database(db)
 
 # loop through the files
 for file_name in file_names:
@@ -52,18 +55,21 @@ for file_name in file_names:
                     for customization in customizations:
                         # prepare dictionary for thr customization 
                         customization_data = prepare_store_date(customization,["name","min_choice_options","max_choice_options"])
+                        customization_hash_key = get_hash(customization_data)
 
-                        if customization_data not in unique_customizations:
+                        if customization_hash_key not in unique_customizations:
                             # no such customization has been created with the given dictionary.
-                            #  Add it to the unique_customizations list (to determine this customization has already been created)
-                            unique_customizations.append(customization_data)
+                            # get a hash and add it to the unique_customizations dict storing the customization id
 
                             # insert into database on customizations collection.
                             created_customization = db.customizations.insert_one(customization_data.copy())
                             customization_id = created_customization.inserted_id
+
+                            unique_customizations[customization_hash_key] = customization_id
+
                         else:
-                            # customization document is available with the provided dictionary, retrieve its id for further use
-                            customization_id = db.customizations.find_one(customization_data)["_id"]
+                            # customization document is available with the provided hash, retrieve its id for further use
+                            customization_id = unique_customizations[customization_hash_key]
 
                         # create a generator for options of this customization                      
                         options = (option for option in customization["options"])   
@@ -74,15 +80,19 @@ for file_name in file_names:
                             # prepare dictionary for this option
                             option_data = prepare_store_date(option,["name","price","min_qty","max_qty","conditional_price","formatted_price","default_qty"])
 
-                            if option_data not in unique_options:
+                            option_hash_key = get_hash(option_data)
+
+                            if option_hash_key not in unique_options:
                                 # this option is never been created, so create one
-                                unique_options.append(option_data)
                                 created_option = db.options.insert_one(option_data.copy())
                                 option_id = created_option.inserted_id
+
+                                # add the hash key with option_id as its value in the unique_options dictionary
+                                unique_options[option_hash_key] = option_id
                             else:
                                 # this option has already been created, get its id
                                 duplixate_option_count += 1
-                                option_id = db.options.find_one(option_data)["_id"]
+                                option_id = unique_options[option_hash_key]
                             
                             # append the option_id to create a list of option_ids shared by this customization 
                             option_id_list.append(option_id)
