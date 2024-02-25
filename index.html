@@ -60,9 +60,10 @@
               console.log("okay we got the response..............")
               console.log(response)
               // location.reload();
+              var url = "http://127.0.0.1:8000/api/product/?product_id=" + response.product.product_id
 
-              var product_html = ' <div>\
-                              <h4>' + response.product.name + '</h4>' + '<p>' + response.product.description  +'</p>'+ '</div>'
+              var product_html = 
+              '<div> <h4><a target="blank" href=' + url +'>' + response.product.name + '</a></h4>' + '<p>' + response.product.description  +'</p>'+ '</div>'
                               +'Price:' + '<p>' + response.product.formatted_price+ '</p>'
                               +'Store:' + '<p>' + response.product.store+ '</p>'
 
